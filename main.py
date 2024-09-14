@@ -32,7 +32,6 @@ def get_moex_info(tickers):
     return len(tickers), top_10_companies
 
 
-# Fetch tickers from MOEX
 def get_moex_tickers():
     url = "https://iss.moex.com/iss/engines/stock/markets/shares/boards/TQBR/securities.json"
     response = requests.get(url)
@@ -108,7 +107,7 @@ def plot_asset_map_with_pareto(mean_returns, std_devs, pareto_optimal):
         print("Insufficient data for plotting the asset map.")
         return
 
-    plt.figure(figsize=(18, 10))  # Increase the size of the plot
+    plt.figure(figsize=(18, 10))
     plt.scatter(std_devs, mean_returns, c='blue', marker='o', label="Assets", alpha=0.7)  # Add transparency to non-Pareto points
 
     # Highlight Pareto-optimal assets
@@ -131,37 +130,26 @@ def plot_asset_map_with_pareto(mean_returns, std_devs, pareto_optimal):
     plt.show()
 
 
-
-# Main execution
 if __name__ == "__main__":
-    # Fetch MOEX credentials from environment variables
     username = os.getenv('MOEX_USERNAME')
     password = os.getenv('MOEX_PASSWORD')
 
-    # Initialize session
     initialize_session(username, password)
 
-    # Get list of tickers
     tickers = get_moex_tickers()
 
-    # Get MOEX info (market capitalization)
     total_assets, main_companies = get_moex_info(tickers)
     print(f"Total assets listed on MOEX: {total_assets}")
     print("Top 10 companies by market capitalization on MOEX:")
     for company, market_cap in main_companies:
         print(f"{company}: Market Cap = {market_cap}")
 
-    # Fetch price data for 2018
     price_data = fetch_data_for_tickers(tickers, start_date='2018-01-01', end_date='2018-12-31')
 
-    # Calculate log returns
     log_returns = calculate_log_returns(price_data)
 
-    # Calculate mean returns and standard deviations
     mean_returns, std_devs = calculate_statistics(log_returns)
 
-    # Find Pareto-optimal assets
     pareto_optimal = find_pareto_optimal(mean_returns, std_devs)
 
-    # Plot asset map with Pareto-optimal assets highlighted
     plot_asset_map_with_pareto(mean_returns, std_devs, pareto_optimal)
