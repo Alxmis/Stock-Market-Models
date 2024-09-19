@@ -12,6 +12,7 @@ from statsmodels.graphics.tsaplots import plot_acf
 from scipy import stats
 import seaborn as sns
 import os
+from distfit import distfit
 
 
 load_dotenv()
@@ -22,24 +23,17 @@ def initialize_session(username, password):
 
 
 def get_moex_info(tickers):
-    """
-    Получить рыночную капитализацию и секторы для каждого тикера.
-    Возвращает общий список активов с рыночной капитализацией и секторами.
-    """
     market_info = {}
     c = 0
 
     for ticker in tickers:
         try:
-            # Получаем информацию с Yahoo Finance для тикера
             yf_ticker = yf.Ticker(f"{ticker}.ME")
             info = yf_ticker.info
 
-            # Получаем рыночную капитализацию и сектор
             market_cap = info.get('marketCap', 0)
             sector = info.get('sector', 'Unknown')
 
-            # Сохраняем информацию в словарь
             market_info[ticker] = {
                 'marketCap': market_cap,
                 'sector': sector
@@ -55,7 +49,6 @@ def get_moex_info(tickers):
         if c % 10 == 0:
             print(f"Processed {c} tickers")
 
-    # Сортируем по рыночной капитализации
     sorted_market_caps = sorted(market_info.items(), key=lambda x: x[1]['marketCap'], reverse=True)
 
     return len(tickers), sorted_market_caps
@@ -65,7 +58,7 @@ def get_moex_tickers():
     url = "https://iss.moex.com/iss/engines/stock/markets/shares/boards/TQBR/securities.json"
     response = requests.get(url)
     data = response.json()
-    tickers = [item[0] for item in data['securities']['data']]  # Extract tickers
+    tickers = [item[0] for item in data['securities']['data']]
     return tickers
 
 
@@ -98,11 +91,6 @@ def calculate_log_returns(price_data):
         return pd.DataFrame()
 
     log_returns = np.log(price_data / price_data.shift(1))
-    # print(price_data)
-    # print(log_returns)
-    # TODO: use dropna or not? help
-    # log_returns.dropna(inplace=True)
-    # print(log_returns)
     return log_returns
 
 
@@ -133,21 +121,18 @@ def plot_asset_map_with_pareto(mean_returns, std_devs, pareto_optimal, most_pref
         return
 
     plt.figure(figsize=(18, 10))
-    plt.scatter(std_devs, mean_returns, c='blue', marker='o', label="Assets", alpha=0.7)  # Add transparency to non-Pareto points
+    plt.scatter(std_devs, mean_returns, c='blue', marker='o', label="Assets", alpha=0.7)
 
-    # Highlight Pareto-optimal assets
     plt.scatter(std_devs[pareto_optimal], mean_returns[pareto_optimal], c='red', marker='o', label="Pareto Optimal", alpha=0.9)
 
     plt.scatter(std_devs_optimal[most_preferred_var_index], mean_returns_optimal[most_preferred_var_index], c='green', marker='o', label="Most Preferred", alpha=0.9)
 
-    # Annotate only Pareto-optimal assets to reduce clutter
     for i, ticker in enumerate(mean_returns.index):
         if pareto_optimal[i]:
-            plt.annotate(ticker, (std_devs[i], mean_returns[i]), fontsize=12)  # Adjust font size for Pareto-optimal assets
+            plt.annotate(ticker, (std_devs[i], mean_returns[i]), fontsize=12)
 
-    # Zoom in on the relevant part of the plot, adjust as needed
-    plt.xlim(0, 0.1)  # Adjust the range of x-axis (Standard Deviation)
-    plt.ylim(-0.005, 0.01)  # Adjust the range of y-axis (Mean Return)
+    plt.xlim(0, 0.1)
+    plt.ylim(-0.005, 0.01)
 
     plt.title('Asset Map (σ, E) with Pareto Optimal Assets')
     plt.xlabel('Standard Deviation (Risk)')
@@ -179,6 +164,12 @@ def optimal(pareto_optimal, mean_returns, tickers, std_devs):
 
     return mean_returns_optimal, tickers_optimal, std_devs_optimal
 
+def showing_graph_9(day, stock_returns):
+    plt.plot(day, stock_returns, linestyle='-')
+    plt.xlabel('Day')
+    plt.ylabel('Return')
+
+    plt.show()
 
 def var_and_cvar_index(pareto_optimal, mean_returns):
     var = []
@@ -196,27 +187,22 @@ def var_and_cvar_index(pareto_optimal, mean_returns):
 
 
 def plot_acf_for_assets(log_returns, lags=40, output_dir='plots'):
-    """
-    Построить ACF график для каждого актива и сохранить в файл.
-    """
-    # Создаем директорию для сохранения графиков, если она не существует
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
     for ticker in log_returns.columns:
-        returns = log_returns[ticker].dropna()  # Удаляем пустые значения
+        returns = log_returns[ticker].dropna()
         if returns.empty or len(returns) < lags:
             print(f"Недостаточно данных для ACF графика для {ticker}. Пропущено.")
             continue
 
         plt.figure(figsize=(10, 6))
-        plot_acf(returns, lags=lags, alpha=0.05)  # Построение ACF с указанным количеством лагов
+        plot_acf(returns, lags=lags, alpha=0.05)
         plt.title(f"ACF для {ticker}")
 
-        # Сохраняем график в файл
         filepath = os.path.join(output_dir, f"ACF_{ticker}.png")
         plt.savefig(filepath)
-        plt.close()  # Закрываем фигуру после сохранения, чтобы освободить память
+        plt.close()
         print(f"График ACF для {ticker} сохранен в {filepath}")
 
 
@@ -227,22 +213,20 @@ def test_white_noise(log_returns, max_lags=None):
     results = {}
 
     for ticker in log_returns.columns:
-        returns = log_returns[ticker].dropna()  # Удаляем пустые значения для каждого актива
-        if returns.empty or len(returns) < (max_lags or 10):  # Проверяем минимальное количество данных для теста
+        returns = log_returns[ticker].dropna()
+        if returns.empty or len(returns) < (max_lags or 10):
             print(f"Недостаточно данных для теста белого шума для {ticker}. Пропущено.")
             results[ticker] = "Недостаточно данных"
             continue
 
-        # Определяем количество лагов: если не указано, берем √n наблюдений
         n_obs = len(returns)
-        lags = max_lags if max_lags else int(np.sqrt(n_obs))  # Выбираем лаги, если не заданы
-        lags = min(lags, len(returns) - 1)  # Убедимся, что лаги не превышают количество наблюдений
+        lags = max_lags if max_lags else int(np.sqrt(n_obs))
+        lags = min(lags, len(returns) - 1)
         print(ticker, lags)
 
         try:
-            lb_test = acorr_ljungbox(returns, lags=[lags],
-                                     return_df=True)  # Тест Льюнга-Бокса с заданным количеством лагов
-            p_value = lb_test['lb_pvalue'].values[0]  # Извлекаем p-value
+            lb_test = acorr_ljungbox(returns, lags=[lags], return_df=True)
+            p_value = lb_test['lb_pvalue'].values[0]
             if p_value > 0.05:
                 results[ticker] = "Белый шум (случайность не отвергается)"
             else:
@@ -253,22 +237,7 @@ def test_white_noise(log_returns, max_lags=None):
 
     return results
 
-def get_sectors(tickers):
-    sectors = {}
-    for ticker in tickers:
-        try:
-            yf_ticker = yf.Ticker(f"{ticker}.ME")
-            info = yf_ticker.info
-            sectors[ticker] = info.get('sector', 0)
-        except Exception as e:
-            print(f"Error fetching sector for {ticker}: {e}")
-            sectors[ticker] = 0
-
-
 def find_top_assets_by_sector(moex_info, n=5):
-    """
-    Возвращает первые n активов из разных секторов.
-    """
     sectors_found = set()
     selected_assets = []
 
@@ -284,25 +253,18 @@ def find_top_assets_by_sector(moex_info, n=5):
 
 
 def analyze_normality(log_returns, selected_assets):
-    """
-    Исследовать распределения доходностей выбранных активов на нормальность.
-    Строит гистограммы, Q-Q графики и выполняет тесты на нормальность.
-    """
     output_dir = 'Distribution_analysis'
 
-    # Создаем директорию для сохранения графиков, если она не существует
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
     for asset, info in selected_assets:
-        ticker = asset  # Извлекаем тикер актива из кортежа
-        returns = log_returns[ticker].dropna()  # Удаляем пустые значения
+        ticker = asset
+        returns = log_returns[ticker].dropna()
 
-        # Проверка на нормальность с помощью теста Шапиро-Уилка
         shapiro_test = stats.shapiro(returns)
         kstest = stats.kstest(returns, 'norm', args=(returns.mean(), returns.std()))
 
-        # Строим гистограмму и Q-Q график
         plt.figure(figsize=(14, 6))
         plt.subplot(1, 2, 1)
         sns.histplot(returns, kde=True, color='blue', bins=30)
@@ -316,6 +278,30 @@ def analyze_normality(log_returns, selected_assets):
         print(f"\nРаспределение доходностей для {ticker}:")
         print(f"Тест Шапиро-Уилка: p-value = {shapiro_test.pvalue:.5f}")
         print(f"Тест Колмогорова-Смирнова: p-value = {kstest.pvalue:.5f}")
+        if shapiro_test.pvalue > 0.05 and kstest.pvalue > 0.05:
+            print(f"Распределение доходностей для {ticker} можно считать нормальным.\n")
+        else:
+            print(f"Распределение доходностей для {ticker} не является нормальным.\n")
+
+
+def analyze_distributions_distfit(log_returns, selected_assets):
+    dist_fitter = distfit()
+
+    for asset, info in selected_assets:
+        returns = log_returns[asset].dropna()
+
+        dist_fitter.fit_transform(returns)
+
+        print(f"\nРезультаты для актива {asset}:")
+        print(f"Лучшее распределение: {dist_fitter.model['name']}")
+
+        dist_fitter.plot()
+        plt.title(f"Распределение для {asset}")
+        filepath = os.path.join('plots', f"Distribution_{ticker}.png")
+        plt.savefig(filepath)
+        print(f"График распределение для {ticker} сохранен в {filepath}")
+        plt.show()
+
 
 if __name__ == "__main__":
     username = os.getenv('MOEX_USERNAME')
@@ -345,7 +331,10 @@ if __name__ == "__main__":
     most_preferred_var_index, most_preferred_cvar_index = var_and_cvar_index(pareto_optimal, mean_returns)
     print(f"VaR most preferred: {tickers_optimal[most_preferred_var_index]}")
     print(f"CVaR most preferred: {tickers_optimal[most_preferred_cvar_index]}")
-    plot_asset_map_with_pareto(mean_returns, std_devs, pareto_optimal, most_preferred_var_index)
+    stock_returns = log_returns['ACKO']
+    day = list(range(len(stock_returns)))
+    showing_graph_9(day, stock_returns)
+    # plot_asset_map_with_pareto(mean_returns, std_devs, pareto_optimal, most_preferred_var_index)
 
     significant_assets = main_companies[:5]
     print("Significant companies by market capitalization on MOEX:")
@@ -358,9 +347,8 @@ if __name__ == "__main__":
         print(f"{ticker}: {result}")
 
     selected_assets = find_top_assets_by_sector(moex_info)
-    print(selected_assets)
+    print("Significant companies by sector on MOEX:")
     for asset, details in selected_assets:
         print(f"{asset}: Market Cap = {details['marketCap']}, Sector = {details['sector']}")
     analyze_normality(log_returns, selected_assets)
-
-
+    analyze_distributions_distfit(log_returns, selected_assets)
