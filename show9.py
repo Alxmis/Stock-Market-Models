@@ -1,0 +1,6 @@
+plt.plot(day, array, linestyle='-')
+plt.xlabel('День')
+plt.ylabel('Стоимость')
+plt.title('Динамика стоимости акции',tiker)
+end = time.time()
+plt.show()
