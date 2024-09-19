@@ -116,7 +116,7 @@ def plot_asset_map_with_pareto(mean_returns, std_devs, pareto_optimal, most_pref
 
     # Annotate only Pareto-optimal assets to reduce clutter
     for i, ticker in enumerate(mean_returns.index):
-        #if pareto_optimal[i]:
+        if pareto_optimal[i]:
         plt.annotate(ticker, (std_devs[i], mean_returns[i]), fontsize=12)  # Adjust font size for Pareto-optimal assets
 
     # Zoom in on the relevant part of the plot, adjust as needed
