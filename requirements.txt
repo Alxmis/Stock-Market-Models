@@ -1,0 +1,7 @@
+requests==2.32.3
+yfinance==0.2.43
+numpy==2.0.2
+pandas==2.2.2
+matplotlib==3.9.2
+moexalgo==2.1.1
+python-dotenv==1.0.1
